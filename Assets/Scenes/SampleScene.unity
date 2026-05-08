@@ -1276,8 +1276,9 @@ MonoBehaviour:
   - {fileID: 16224059}
   vitesseBase: 4.53
   vitesseCrawl: 5.74
-  leapDistance: 9.89
-  leapHeight: 11.4
+  jumpDistance: 0
+  jumpDuration: 0
+  jumpHeight: 0
   projectilePrefab: {fileID: 8734133743964991965, guid: 79f37b247074f6046abd010a147bd442, type: 3}
   firePoint: {fileID: 1360301951}
   detectionRange: 10.63
@@ -1334,7 +1335,7 @@ Transform:
   m_GameObject: {fileID: 884712621}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 11.88, y: 7.51, z: -4.5}
+  m_LocalPosition: {x: 10.78, y: 7.51, z: -3.46}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

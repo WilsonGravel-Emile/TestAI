@@ -15,6 +15,7 @@ public class JumpAttackState : IState
 {
     // Ref
     private Transform player;
+    private EnnemyReferences _ennemyRef;
     private Transform transform;
     private NavMeshAgent agent;
 
@@ -62,7 +63,17 @@ public class JumpAttackState : IState
             avec un Quaternion devrait marcher
 
     */
-    public void Tick(){}
+    public void Tick()
+    {
+        timePassed += Time.deltaTime; // Incrémente le temps écoulé depuis le début de l'état
+        float progress = timePassed / _ennemyRef.jumpDuration; // Calcule le progrès du saut
+        Vector3 currentPosition = Vector3.Lerp(startPosition, targetposition, progress);// Calcule la position courante en interpolant entre la position de départ et la position cible en fonction du progrès    
+
+        if(progress < 1f)
+        {
+            
+        }
+    }
 
     public Color GizmoColor()
     {
