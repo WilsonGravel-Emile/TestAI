@@ -13,7 +13,8 @@ public class EnnemyReferences : MonoBehaviour
     public float vitesseCrawl;
     public float jumpDistance; // placeholder, à ajuster selon les besoins pour le saut de l'ennemi
     public float jumpDuration; // placeholder, à ajuster selon les besoins pour la durée du saut de l'ennemi
-    
+    public float jumpCooldown; // temps de recharge courant du saut
+    public float jumpCooldownDuration = 2f; // durée de recharge après une attaque de saut
     public float jumpHeight; // placeholder, à ajuster selon les besoins pour la hauteur du saut de l'ennemi
     [Header("Combat")]
     public GameObject projectilePrefab;

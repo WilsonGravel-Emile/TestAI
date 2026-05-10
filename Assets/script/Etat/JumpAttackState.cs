@@ -22,6 +22,7 @@ public class JumpAttackState : IState
     private Vector3 startPosition; // va être Miann : = transform.positionm 
     private Vector3 targetposition; // va être le joueur
     private float timePassed;
+    public bool IsComplete { get; private set; } // Propriété pour indiquer si l'état est terminé
 
 
     //Constructeur
@@ -29,8 +30,9 @@ public class JumpAttackState : IState
     {
         player = ennemyRef.player;
         agent = ennemyRef.agent;
-        ennemyRef.jumpDuration = 0f;
+        ennemyRef.jumpDuration = 0.8f;
         transform = ennemyRef.transform;
+        _ennemyRef = ennemyRef;
         // pas besoin de déclarer un variable transform peut utilise ennemyRef.Transform et les paramètres de sauts, jumpDuration, jumpHeight, jumpDistance
     }
 
@@ -44,6 +46,8 @@ public class JumpAttackState : IState
         targetposition = player.position; // Le joueur
 
         timePassed = 0;
+        IsComplete = false;
+        _ennemyRef.jumpCooldown = _ennemyRef.jumpCooldownDuration; // réinitialise le cooldown du saut après l'attaque
 
         Debug.Log("!! Miann commence son starter : jumpAttack !!");
     }
@@ -66,12 +70,28 @@ public class JumpAttackState : IState
     public void Tick()
     {
         timePassed += Time.deltaTime; // Incrémente le temps écoulé depuis le début de l'état
-        float progress = timePassed / _ennemyRef.jumpDuration; // Calcule le progrès du saut
-        Vector3 currentPosition = Vector3.Lerp(startPosition, targetposition, progress);// Calcule la position courante en interpolant entre la position de départ et la position cible en fonction du progrès    
+        float progress = timePassed / _ennemyRef.jumpDuration; // Calcule le progrès du saut  
 
         if(progress < 1f)
         {
-            
+
+            // Calcule la position courante en interpolant entre la position de départ et la position cible en fonction du progrès
+            Vector3 currentPosition = Vector3.Lerp(startPosition, targetposition, progress);// Calcule la position courante en interpolant entre la position de départ et la position cible en fonction du progrès  
+            float yOffset = Mathf.Sin(progress * Mathf.PI) * _ennemyRef.jumpHeight; // Calcule l'offset vertical pour créer une trajectoire en arche
+            currentPosition.y += yOffset;
+            transform.position = currentPosition;
+
+            // oriente le monstre vers la cible
+            Vector3 direction = (targetposition - transform.position).normalized; // Calcule la direction vers la cible
+            if(direction != Vector3.zero) // Vérifie que la direction n'est pas un vecteur nul pour éviter les erreurs de rotation
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(direction); // Calcule la rotation cible pour faire face à la cible
+                transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 5f); // Oriente progressivement le monstre vers la cible
+            }
+        }
+        else
+        {
+            IsComplete = true;
         }
     }
 
@@ -80,5 +100,10 @@ public class JumpAttackState : IState
         return Color.cyan;
     }
     //Réactive le NavMesh et update sa position avec warp
-    public void OnExit(){}
+    public void OnExit()
+    {
+        agent.enabled = true; // réactive la navigation
+        agent.Warp(transform.position); // met à jour la position du NavMeshAgent pour correspondre à la position actuelle de Miann
+        agent.isStopped = false; // réactive le mouvement du NavMeshAgent
+    }
 }

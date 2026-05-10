@@ -29,11 +29,9 @@ public class Cerveau_Miann : MonoBehaviour
         // Recupere les composant du gameObject
         ennemyRef = GetComponent<EnnemyReferences>();
         agentMiann = GetComponent<NavMeshAgent>();
-
         //Initialisation de la FSM
         stateMachine = new StateMachine();
-
-        //1. Déclaration des états spécifique à Miann
+        //1. Déclaration des états spécifique à Mian    n
         var patrol = new PatrolState(agentMiann, ennemyRef.waypoints); // Etat de base : patrouille
         var chase = new ChaseState(ennemyRef);
         var wallRun = new WallRunState(ennemyRef); // Etat de déplacement sur les murs : utilise le NavMeshAgent pour se déplacer sur les murs
@@ -75,6 +73,8 @@ public class Cerveau_Miann : MonoBehaviour
 
         // WallRun → Chase (mur perdu)
         At(wallRun, chase, () => wallRunContinuationTime > 0.4f); // Si l'ennemi ne touche plus un mur pendant le déplacement sur les murs, retourner à l'état de poursuite
+        // Chase -> JumpAttaque
+        At(chase, jumpAttack, () => distance < ennemyRef.jumpAttackRange && ennemyRef.jumpCooldown <= 0); // Si le joueur est à moins de la distance d'attaque de saut, passer à l'état d'attaque de saut
         /*
         // =========================
         //  ATTAQUES (zones exclusives)
@@ -101,10 +101,10 @@ public class Cerveau_Miann : MonoBehaviour
         // =========================
         // RETOURS
         // =========================
-
+        */
         // Après jump → retour chase
-        At(jumpAttack, chase, () => estAuSol); // Si l'ennemi est au sol après une attaque de saut, retourner à l'état de poursuite
-
+        At(jumpAttack, chase, () => jumpAttack.IsComplete); // Retourne à la poursuite seulement lorsque l'attaque de saut est terminée
+        /*
          // Après melee → retour chase
         At(attack, chase, () => distance >= ennemyRef.attackRange); // Si le joueur est à plus de la distance d'attaque au corps à corps après une attaque, retourner à l'état de poursuite
         At(projectileAttack, chase, () => distance >= ennemyRef.projectileRange); // Si le joueur est à plus de la distance d'attaque à distance après une attaque, retourner à l'état de poursuite
@@ -133,11 +133,14 @@ public class Cerveau_Miann : MonoBehaviour
     }
     void Update()
     {
-        if (ennemyRef.player != null) // Si le joueur n'est pas trouvé, ne rien faire
+        if (ennemyRef.player != null) // Si le joueur n'est pas trouvé, on considère qu'il est hors de portée
         {
             distance = Vector3.Distance(transform.position, ennemyRef.player.position); // Calcule la distance entre l'ennemi et le joueur
         }
-        distance = Vector3.Distance(transform.position, ennemyRef.player.position); // Calcule la distance entre l'ennemi et le joueur à chaque frame
+        else
+        {
+            distance = float.MaxValue;
+        }
         toucheMur = ToucheMur(); // Vérifie si l'ennemi touche un mur à chaque frame
         if (toucheMur)
         {
@@ -148,11 +151,17 @@ public class Cerveau_Miann : MonoBehaviour
             wallRunContinuationTime += Time.deltaTime; // Incrémente le timer
         }
         estAuSol = EstAuSol(); // Vérifie si l'ennemi est au sol à chaque frame
-
+        jumpCooldownUpdate(); // Met à jour le cooldown du saut à chaque frame
         stateMachine.Tick(); // Appelle la méthode Tick du FSM à chaque frame
 
     }
-
+    private void jumpCooldownUpdate()
+    {
+        if (ennemyRef.jumpCooldown > 0)
+        {
+            ennemyRef.jumpCooldown -= Time.deltaTime; // Réduit le cooldown du saut au fil du temps
+        }
+    }
     private bool ToucheMur() // Fonction pour vérifier si l'ennemi touche un mur
     {
         Vector3 origin = transform.position + Vector3.up *1f;

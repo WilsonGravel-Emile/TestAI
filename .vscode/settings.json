@@ -67,6 +67,6 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "TestAI.slnx",
+    "dotnet.defaultSolution": "Test_IA.slnx",
     "dotnet.enableWorkspaceBasedDevelopment": false
 }
