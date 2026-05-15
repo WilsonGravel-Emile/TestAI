@@ -35,37 +35,41 @@ public class Cerveau_Miann : MonoBehaviour
         var patrol = new PatrolState(agentMiann, ennemyRef.waypoints); // Etat de base : patrouille
         var chase = new ChaseState(ennemyRef);
         var wallRun = new WallRunState(ennemyRef); // Etat de déplacement sur les murs : utilise le NavMeshAgent pour se déplacer sur les murs
-        var delayAfterJump = new EnnemyState_Delay(2f); // Etat de délai après une attaque de saut : empêche l'ennemi de bouger pendant un court instant après une attaque de saut pour éviter les comportements bizarres
-        var delayAttack = new EnnemyState_Delay(1f); // Etat de délai après une attaque au corps à corps : empêche l'ennemi de bouger pendant un court instant après une attaque au corps à corps pour éviter les comportements bizarres
-        var jumpAttack = new JumpAttackState(ennemyRef); // 
-        //============================================================================================================
-        
-
-        //var jumpAttack = new JumpAttackState(ennemyRef); // Etat d'attaque : utilise le NavMeshAgent pour sauter sur le joueur
-        // ACTIVE QUAND FINI LE SCRIPT
-        // var projectileAttack = new ProjectileAttackState(ennemyRef.projectilePrefab, ennemyRef.firePoint, ennemyRef.player); // Etat d'attaque à distance : utilise le NavMeshAgent pour se déplacer et lancer des projectiles
-        // ACTIVE QUAND FINI LE SCRIPT
+        var jumpAttack = new JumpAttackState(ennemyRef); // Etat d'attaque de saut : utilise les vector3 lerp pour creer un arche
+        var projectileAttack = new ProjectileAttackState(ennemyRef); // Etat d'attaque à distance : utilise le NavMeshAgent pour se déplacer et lancer des projectiles
+        // TODO: ACTIVE QUAND FINI LE SCRIPT
+        // DeathState peut seulement être activer quand les scripts vont être intégrer dans la scène principale
         // var death = new DeathState(ennemyRef.player, ennemyRef.degats); // Etat de mort : joue une animation de mort et désactive l'ennemi
-        // ACTIVE QUAND FINI LE SCRIPT
+        
+        // TODO:  StunnedState :
+        // - Sert à arrêter le Agent et aussi empêche d'attaquer, patrol, chase, jump et plus
+        // - Seulement activer par un damageThresold qui revient tanquilement à zero
+        //      par exemple : plus au que 3 déclanche le damage thresold
+        //      -> Ennemy prend plus de dégats
+        //      -> Ennemy prend aucun damageThresold ( empêche de spam stun)
+        //      -> Si le joueur utilise le fusil à pompe => RAGDOLLL LL L  L L
+        //      -> En dessous de trois reviens à la normal
         // var stunned = new StunnedState(agentMiann); // Etat d'étourdissement : joue une animation d'étourdissement et empêche l'ennemi de bouger
-        // ACTIVE QUAND FINI LE SCRIPT
-        // var attack = new AttackState(ennemyRef.player, ennemyRef.attackDamage); // Etat d'attaque au corps à corps : utilise le NavMeshAgent pour se déplacer et attaquer le joueur
+        var attack = new AttackState(ennemyRef); // Etat d'attaque au corps à corps : utilise le NavMeshAgent pour se déplacer et attaquer le joueur
+
         //2. Définition des transitions
         // elle permet d'utiliser At et AtAny pour ajouter des transitions entre les états
         void At(IState from, IState to, Func<bool> condition) => stateMachine.AddTransition(from, to, condition); // Fonction pour ajouter une transition
         void AtAny(IState to, Func<bool> condition) => stateMachine.AddAnyTransition (to, condition); // Fonction pour ajouter une transition qui peut se produire à n'importe quel moment
 
-        // =========================
-        //  DÉPLACEMENT
-        // =========================
+        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        //  DÉPLACEMENT =================================================================
+        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
         // Patrol → Chase
         At(patrol, chase, () => distance < ennemyRef.detectionRange); // Si le joueur est à moins de la distance de détection, passer de la patrouille à la poursuite
 
         // Chase → Patrol (perte du joueur)
-        At(chase, patrol, () => distance > ennemyRef.lostRange); // Si le joueur est à plus de la distance de perte, retourner à la patrouille
+        At(chase, patrol, () => distance > ennemyRef.detectionRange); // Si le joueur est à plus de la distance de perte, retourner à la patrouille
+
         //Enlève quand fini
         At(chase, patrol, () => ennemyRef.player == null); // Si le joueur n'est plus trouvé, retourner à la patrouille
+
         // Chase → WallRun (seulement si pas déjà en train d’attaquer)
         At(chase, wallRun, () =>
             toucheMur &&
@@ -73,47 +77,52 @@ public class Cerveau_Miann : MonoBehaviour
 
         // WallRun → Chase (mur perdu)
         At(wallRun, chase, () => wallRunContinuationTime > 0.4f); // Si l'ennemi ne touche plus un mur pendant le déplacement sur les murs, retourner à l'état de poursuite
+
         // Chase -> JumpAttaque
         At(chase, jumpAttack, () => distance < ennemyRef.jumpAttackRange && ennemyRef.jumpCooldown <= 0); // Si le joueur est à moins de la distance d'attaque de saut, passer à l'état d'attaque de saut
-        /*
-        // =========================
-        //  ATTAQUES (zones exclusives)
-        // =========================
+        
+        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        //  ATTAQUES (zones exclusives) =================================================================
+        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
         // WallRun → JumpAttack (logique principale du jump)
-        At(wallRun, jumpAttack, () => distance < ennemyRef.jumpAttackRange); // Si le joueur est à moins de la distance d'attaque de saut, passer à l'état d'attaque de saut
+        At(wallRun, jumpAttack, () => distance < ennemyRef.jumpAttackRange && distance > ennemyRef.attackRange); // Si le joueur est à moins de la distance d'attaque de saut, passer à l'état d'attaque de saut
 
         // Chase → JumpAttack (seulement si mur)
         At(chase, jumpAttack, () =>
             distance < ennemyRef.jumpAttackRange &&
             toucheMur); // Si le joueur est à moins de la distance d'attaque de saut et que l'ennemi touche un mur, passer à l'état d'attaque de saut
-
         // Chase → Melee
         At(chase, attack, () =>
-            distance >= ennemyRef.jumpAttackRange &&
-            distance < ennemyRef.attackRange); // Si le joueur est à moins de la distance d'attaque au corps à corps et à plus de la distance d'attaque de saut, passer à l'état d'attaque au corps à corps
-
+            distance < ennemyRef.attackRange && ennemyRef.attackCooldown <= 0); // Si le joueur est à moins de la distance d'attaque au corps à corps et à plus de la distance d'attaque de saut, passer à l'état d'attaque au corps à corps
         // Chase → Projectile
         At(chase, projectileAttack, () =>
-            distance >= ennemyRef.attackRange &&
-            distance < ennemyRef.projectileRange); // Si le joueur est à moins de la distance d'attaque à distance et à plus de la distance d'attaque au corps à corps, passer à l'état d'attaque à distance
-
-        // =========================
-        // RETOURS
-        // =========================
-        */
+            distance < ennemyRef.projectileRange && ennemyRef.projectileCooldown <= 0); // Si le joueur est à moins de la distance d'attaque à distance et à plus de la distance d'attaque au corps à corps, passer à l'état d'attaque à distance
+        // Projectile → Melee
+        At(projectileAttack, attack, () =>
+            distance < ennemyRef.attackRange); // Si le joueur est à moins de la distance d'attaque au corps à corps après une attaque à distance, passer à l'état d'attaque au corps à corps
+        // Melee → Projectile
+        At(attack, projectileAttack, () =>
+            distance < ennemyRef.projectileRange && ennemyRef.projectileCooldown <= 0); // Si le joueur est à moins de la distance d'attaque à distance et à plus de la distance d'attaque au corps à corps après une attaque au corps à corps, passer à l'état d'attaque à distance
+        
+        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        // RETOURS =================================================================
+        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        
         // Après jump → retour chase
         At(jumpAttack, chase, () => jumpAttack.IsComplete); // Retourne à la poursuite seulement lorsque l'attaque de saut est terminée
-        /*
+        
          // Après melee → retour chase
-        At(attack, chase, () => distance >= ennemyRef.attackRange); // Si le joueur est à plus de la distance d'attaque au corps à corps après une attaque, retourner à l'état de poursuite
-        At(projectileAttack, chase, () => distance >= ennemyRef.projectileRange); // Si le joueur est à plus de la distance d'attaque à distance après une attaque, retourner à l'état de poursuite
+        At(attack, chase, () => distance >= ennemyRef.attackRange || attack.IsComplete); // Si le joueur est à plus de la distance d'attaque au corps à corps après une attaque, retourner à l'état de poursuite
+        // Après projectile → retour chase
+        At(projectileAttack, chase, () => projectileAttack.IsComplete); // Si le joueur est à plus de la distance d'attaque à distance après une attaque, retourner à l'état de poursuite
 
+        /*
 
-        // =========================
-        //  GLOBAL
-        // =========================
-
+        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        //  GLOBAL =================================================================
+        // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        
         // Stun
         AtAny(stunned, () => ennemyRef.isStunned); // Si l'ennemi est étourdi, passer à l'état d'étourdissement
 
@@ -151,15 +160,23 @@ public class Cerveau_Miann : MonoBehaviour
             wallRunContinuationTime += Time.deltaTime; // Incrémente le timer
         }
         estAuSol = EstAuSol(); // Vérifie si l'ennemi est au sol à chaque frame
-        jumpCooldownUpdate(); // Met à jour le cooldown du saut à chaque frame
+        CooldownUpdate(); // Met à jour le cooldown du saut à chaque frame
         stateMachine.Tick(); // Appelle la méthode Tick du FSM à chaque frame
 
     }
-    private void jumpCooldownUpdate()
+    private void CooldownUpdate()
     {
         if (ennemyRef.jumpCooldown > 0)
         {
             ennemyRef.jumpCooldown -= Time.deltaTime; // Réduit le cooldown du saut au fil du temps
+        }
+        if (ennemyRef.attackCooldown > 0)
+        {
+            ennemyRef.attackCooldown -= Time.deltaTime; // Réduit le cooldown de l'attaque au corps à corps au fil du temps
+        }
+        if  (ennemyRef.projectileCooldown > 0)
+        {
+            ennemyRef.projectileCooldown -= Time.deltaTime; // Réduit le cooldown de l'attaque à distance au fil du temps
         }
     }
     private bool ToucheMur() // Fonction pour vérifier si l'ennemi touche un mur
@@ -185,6 +202,8 @@ public class Cerveau_Miann : MonoBehaviour
             Gizmos.DrawWireSphere(ennemyRef.firePoint.position, ennemyRef.projectileRange); // Affiche la portée de l'attaque à distance
             Gizmos.color = Color.green;
             Gizmos.DrawWireSphere(transform.position, ennemyRef.wallCheckDistance);
+            Gizmos.color = new Color(1f, 0.5f, 0f); // Orange
+            Gizmos.DrawWireSphere(transform.position, ennemyRef.jumpAttackRange); // Affiche la portée d'attaque de saut
 
             // Affiche Une sphere qui montre l'état actuel de l'ennemi :
             // - Jaune pour la patrouille

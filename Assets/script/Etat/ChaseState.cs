@@ -52,7 +52,7 @@ public class ChaseState : IState
     // Coloration du Gizmo
     public Color GizmoColor()
     {
-        return Color.red;
+        return Color.blue;
     }
 
 }

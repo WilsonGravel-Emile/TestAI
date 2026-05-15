@@ -42,6 +42,7 @@ public class PatrolState : IState
         {
             currentWaypointIndex = (currentWaypointIndex + 1) % _waypoints.Length; // Passer au waypoint suivant (boucle)
             SetDestinationToWaypoint(); // Mettre à jour la destination vers le nouveau waypoint
+            Debug.Log("Patrolling to waypoint " + currentWaypointIndex);
         }
     }
     public void OnExit()
